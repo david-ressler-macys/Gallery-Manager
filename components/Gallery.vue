@@ -110,6 +110,7 @@ import GridItem from "~/components/GridItem.vue";
 import HoverActions from "~/components/HoverActions.vue";
 import { mapGetters, mapActions, mapMutations } from "vuex";
 import { debounce } from "underscore";
+import { grid, list, config } from "../config/gallery.config";
 
 export default {
   components: {
@@ -130,48 +131,7 @@ export default {
       selected: null,
       size: "small",
       picked: null,
-      list: {
-        remain: 10,
-        height: 0,
-        initialHeight: 80,
-        bench: 20
-      },
-      grid: {
-        compact: {
-          small: {
-            cols: {
-              default: 9,
-              1340: 8,
-              1240: 7,
-              1140: 6,
-              940: 5,
-              840: 4,
-              740: 3,
-              640: 2,
-              540: 1
-            },
-            limit: 80,
-            step: 20
-          }
-        },
-        extend: {
-          small: {
-            cols: {
-              default: 11,
-              1340: 10,
-              1240: 9,
-              1140: 8,
-              940: 7,
-              840: 6,
-              740: 5,
-              640: 4,
-              540: 3
-            },
-            limit: 70,
-            step: 20
-          }
-        }
-      }
+      list
     };
   },
   props: ["items", "limited", "isSavedDrive", "isLoading"],
@@ -181,12 +141,12 @@ export default {
     }),
     columns() {
       return this.isSavedDrive
-        ? this.grid.extend[this.size].cols
-        : this.grid.compact[this.size].cols;
+        ? grid.extend[this.size].cols
+        : grid.compact[this.size].cols;
     }
   },
   created() {
-    this.debounceActions = debounce(this.showActions, 90);
+    this.debounceActions = debounce(this.showActions, config.hoverDebounce);
   },
   mounted() {
     if (this.isGridView) {
@@ -243,11 +203,11 @@ export default {
     },
     resetGridView() {
       const limit = this.isSavedDrive
-        ? this.grid.extend[this.size].limit
-        : this.grid.compact[this.size].limit;
+        ? grid.extend[this.size].limit
+        : grid.compact[this.size].limit;
       const step = this.isSavedDrive
-        ? this.grid.extend[this.size].step
-        : this.grid.compact[this.size].step;
+        ? grid.extend[this.size].step
+        : grid.compact[this.size].step;
       this.changeInterval({ limit, step });
     },
     resetListView() {
@@ -290,6 +250,8 @@ export default {
     },
     hideActions() {
       this.picked = null;
+      // clean up debounce drawback
+      setTimeout(() => (this.picked = null), config.hoverDebounce);
     },
     activateGridView() {
       if (this.isGridView) return;
@@ -387,7 +349,7 @@ export default {
       width: 5px;
       height: 4px;
       background-color: #b7b7b7;
-      transition: background-color ease .1s;
+      transition: background-color ease 0.1s;
     }
   }
 }

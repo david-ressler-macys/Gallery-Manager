@@ -12,8 +12,17 @@ export const actions = {
     if (isSavedDrive) {
       commit('save');
     }
+
+    let items = [];
+
     const t0 = performance.now();
-    const items = await this.$axios.$get(`/api/load?drive=${drive}`);
+    try {
+      items = await this.$axios.$get(`/api/load?drive=${drive}`);
+    } catch (e) {
+      return e && e.response && e.response.data
+        ? this.$toast.error(e.response.data)
+        : this.$toast.error('Server Error');
+    }
     const t1 = performance.now();
     console.log(`load items took: ${t1 - t0} milliseconds`);
 

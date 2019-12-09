@@ -4,13 +4,20 @@ const sharp = require('sharp');
 const { promisify } = require('util');
 const readdir = promisify(fs.readdir);
 const stat = promisify(fs.stat);
+const { assetConfig } = require('../config/asset.config');
+const { relativePath, thumb } = assetConfig;
 
 export default async (req, res, next) => {
-  const drive = req.query && req.query.drive || 'gallery';
-  const directoryPath = path.join(__dirname, `../static/${drive}/`);
+  const drive = req.query && req.query.drive;
+  const directoryPath = path.join(__dirname, `${relativePath}/${drive}/`);
+
+  if (!drive || !fs.existsSync(directoryPath)) {
+    res.status(404).send('Drive is not found');
+  }
+
+  const thumbDir = thumb.dir;
+  const thumbDirPath = path.join(__dirname, `${relativePath}/${thumbDir}`);
   const images = [];
-  const thumbDir = 'thumb';
-  const thumbDirPath = path.join(__dirname, `../static/${thumbDir}`);
   let files = [];
   let done = 0;
 
@@ -34,21 +41,23 @@ export default async (req, res, next) => {
       return ++done && done === count && res.send(images);
     }
 
-    const { size, mtime, ino } = stats;
+    const { size, mtime, dev, ino } = stats;
     const url = `/${drive}/${name}`;
-    const thumbName = `${ino}.webp`;
+    const thumbName = `${dev + ino}${thumb.format}`;
     const thumbUrl = `/${thumbDir}/${thumbName}`;
-    const fullThumbUrl = path.resolve(__dirname, `../static/${thumbDir}/${thumbName}`);
+    const fullThumbUrl = path.resolve(__dirname, `${relativePath}/${thumbDir}/${thumbName}`);
+    const isThumbExist = !!(await fs.promises.stat(fullThumbUrl).catch(e => false));
     let dimensions;
 
     try {
-      dimensions = await sharp(fullPath)
-        .resize(140)
-        .webp()
-        .toFile(fullThumbUrl);
-    } catch (e) {
-      return ++done && done === count && res.send(images);
+      dimensions = isThumbExist
+        ? await sharp(fullThumbUrl).metadata()
+        : await sharp(fullPath)
+          .resize(thumb.width)
+          .webp()
+          .toFile(fullThumbUrl);
     }
+    catch (e) { }
 
     if (dimensions) {
       const { width, height } = dimensions;
@@ -63,7 +72,8 @@ export default async (req, res, next) => {
       }
 
       images.push(imgObj);
-      return ++done && done === count && res.send(images);
     }
+
+    return ++done && done === count && res.send(images);
   });
 }
